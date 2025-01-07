@@ -67,14 +67,15 @@ class Processor : public Component
     Component core, l2, l3, l1dir, l2dir, noc, mcs, cc, nius, pcies,flashcontrollers;
     int  numCore, numL2, numL3, numNOC, numL1Dir, numL2Dir;
     Processor(ParseXML *XML_interface);
-    void initialize();    // Initialize phase. An optimization is done via design space exploration.
-    void compute();       // Compute phase. Runtime power is computed.
-    void refresh_param(ParseXML *fresh_XML); // Refresh statistics for power computation. For coding simplicity, all parameters are refreshed.
-    void set_proc_param(ParseXML *fresh_XML);
+    ~Processor();
+    void set_proc_param();
+    // The following are interface for users:
     void displayEnergy(uint32_t indent = 0,int plevel = 100, bool is_tdp=true);
     void displayDeviceType(int device_type_, uint32_t indent = 0);
     void displayInterconnectType(int interconnect_type_, uint32_t indent = 0);
-    ~Processor();
+    void initialize();    // Initialize phase. An optimization is done via design space exploration.
+    void compute();       // Compute phase. Runtime power is computed.
+    void refresh_param(ParseXML *fresh_XML); // Refresh statistics for power computation. For coding simplicity, all parameters are refreshed.
 };
 
 #endif /* PROCESSOR_H_ */

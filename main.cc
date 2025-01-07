@@ -88,6 +88,7 @@ int main(int argc,char *argv[])
 	p1->parse(fb);
 	Processor proc(p1);
   proc.initialize();
+  proc.refresh_param(p1);
   proc.compute();
 	proc.displayEnergy(2, plevel);
 	delete p1;
