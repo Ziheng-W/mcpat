@@ -54,7 +54,7 @@ Processor::Processor(ParseXML *XML_interface)
 {
   int i;
   double pppm_t[4]    = {1,1,1,1};
-  set_proc_param();
+  set_proc_param(nullptr);
   if (procdynp.homoCore)
 	  numCore = procdynp.numCore==0? 0:1;
   else
@@ -745,43 +745,34 @@ void Processor::displayEnergy(uint32_t indent, int plevel, bool is_tdp)
 
 }
 
-void Processor::set_proc_param()
+void Processor::set_proc_param(ParseXML *fresh_XML)
 {
-	bool debug = false;
+  if (fresh_XML == nullptr) { // this holds true during initialization
+    fresh_XML = this->XML;
+  }
+	
+  bool debug = false;
+	procdynp.homoCore = bool(debug?1:fresh_XML->sys.homogeneous_cores);
+	procdynp.homoL2   = bool(debug?1:fresh_XML->sys.homogeneous_L2s);
+	procdynp.homoL3   = bool(debug?1:fresh_XML->sys.homogeneous_L3s);
+	procdynp.homoNOC  = bool(debug?1:fresh_XML->sys.homogeneous_NoCs);
+	procdynp.homoL1Dir  = bool(debug?1:fresh_XML->sys.homogeneous_L1Directories);
+	procdynp.homoL2Dir  = bool(debug?1:fresh_XML->sys.homogeneous_L2Directories);
 
-	procdynp.homoCore = bool(debug?1:XML->sys.homogeneous_cores);
-	procdynp.homoL2   = bool(debug?1:XML->sys.homogeneous_L2s);
-	procdynp.homoL3   = bool(debug?1:XML->sys.homogeneous_L3s);
-	procdynp.homoNOC  = bool(debug?1:XML->sys.homogeneous_NoCs);
-	procdynp.homoL1Dir  = bool(debug?1:XML->sys.homogeneous_L1Directories);
-	procdynp.homoL2Dir  = bool(debug?1:XML->sys.homogeneous_L2Directories);
-
-	procdynp.numCore = XML->sys.number_of_cores;
-	procdynp.numL2   = XML->sys.number_of_L2s;
-	procdynp.numL3   = XML->sys.number_of_L3s;
-	procdynp.numNOC  = XML->sys.number_of_NoCs;
-	procdynp.numL1Dir  = XML->sys.number_of_L1Directories;
-	procdynp.numL2Dir  = XML->sys.number_of_L2Directories;
-	procdynp.numMC = XML->sys.mc.number_mcs;
-	procdynp.numMCChannel = XML->sys.mc.memory_channels_per_mc;
-
-//	if (procdynp.numCore<1)
-//	{
-//		cout<<" The target processor should at least have one core on chip." <<endl;
-//		exit(0);
-//	}
-
-	//  if (numNOCs<0 || numNOCs>2)
-	//    {
-	//  	  cout <<"number of NOCs must be 1 (only global NOCs) or 2 (both global and local NOCs)"<<endl;
-	//  	  exit(0);
-	//    }
+	procdynp.numCore = fresh_XML->sys.number_of_cores;
+	procdynp.numL2   = fresh_XML->sys.number_of_L2s;
+	procdynp.numL3   = fresh_XML->sys.number_of_L3s;
+	procdynp.numNOC  = fresh_XML->sys.number_of_NoCs;
+	procdynp.numL1Dir  = fresh_XML->sys.number_of_L1Directories;
+	procdynp.numL2Dir  = fresh_XML->sys.number_of_L2Directories;
+	procdynp.numMC = fresh_XML->sys.mc.number_mcs;
+	procdynp.numMCChannel = fresh_XML->sys.mc.memory_channels_per_mc;
 
 	/* Basic parameters*/
-	interface_ip.data_arr_ram_cell_tech_type    = debug?0:XML->sys.device_type;
-	interface_ip.data_arr_peri_global_tech_type = debug?0:XML->sys.device_type;
-	interface_ip.tag_arr_ram_cell_tech_type     = debug?0:XML->sys.device_type;
-	interface_ip.tag_arr_peri_global_tech_type  = debug?0:XML->sys.device_type;
+	interface_ip.data_arr_ram_cell_tech_type    = debug?0:fresh_XML->sys.device_type;
+	interface_ip.data_arr_peri_global_tech_type = debug?0:fresh_XML->sys.device_type;
+	interface_ip.tag_arr_ram_cell_tech_type     = debug?0:fresh_XML->sys.device_type;
+	interface_ip.tag_arr_peri_global_tech_type  = debug?0:fresh_XML->sys.device_type;
 
 	interface_ip.specific_hp_vdd = false;
 	interface_ip.specific_lop_vdd = false;
@@ -789,7 +780,7 @@ void Processor::set_proc_param()
 
 	interface_ip.specific_vcc_min = false;
 
-	interface_ip.ic_proj_type     = debug?0:XML->sys.interconnect_projection_type;
+	interface_ip.ic_proj_type     = debug?0:fresh_XML->sys.interconnect_projection_type;
 	interface_ip.delay_wt                = 100;//Fixed number, make sure timing can be satisfied.
 	interface_ip.area_wt                 = 0;//Fixed number, This is used to exhaustive search for individual components.
 	interface_ip.dynamic_power_wt        = 100;//Fixed number, This is used to exhaustive search for individual components.
@@ -806,8 +797,8 @@ void Processor::set_proc_param()
 	interface_ip.burst_len      = 1;//parameters are fixed for processor section, since memory is processed separately
 	interface_ip.int_prefetch_w = 1;
 	interface_ip.page_sz_bits   = 0;
-	interface_ip.temp = debug?360: XML->sys.temperature;
-	interface_ip.F_sz_nm         = debug?90:XML->sys.core_tech_node;//XML->sys.core_tech_node;
+	interface_ip.temp = debug?360: fresh_XML->sys.temperature;
+	interface_ip.F_sz_nm         = debug?90:fresh_XML->sys.core_tech_node;//XML->sys.core_tech_node;
 	interface_ip.F_sz_um         = interface_ip.F_sz_nm / 1000;
 
 	//***********This section of code does not have real meaning, they are just to ensure all data will have initial value to prevent errors.
@@ -842,24 +833,75 @@ void Processor::set_proc_param()
 	interface_ip.pure_ram            =false;
 	interface_ip.pure_cam            =false;
 	interface_ip.force_cache_config  =false;
-	interface_ip.power_gating  		 =XML->sys.power_gating;
+	interface_ip.power_gating  		 =fresh_XML->sys.power_gating;
 
-	if (XML->sys.Embedded)
-		{
+	if (fresh_XML->sys.Embedded)
+  {
 		interface_ip.wt                  =Global_30;
 		interface_ip.wire_is_mat_type = 0;
 		interface_ip.wire_os_mat_type = 0;
-		}
-	else
-		{
+	}
+	else  
+	{
 		interface_ip.wt                  =Global;
 		interface_ip.wire_is_mat_type = 2;
 		interface_ip.wire_os_mat_type = 2;
-		}
+	}
 	interface_ip.force_wiretype      = false;
 	interface_ip.print_detail        = 1;
 	interface_ip.add_ecc_b_          =true;
 }
+
+
+void Processor::refresh_param(ParseXML *fresh_XML){
+  int i;
+  set_proc_param(fresh_XML);
+  for (i = 0;i < numCore; i++){
+		// cores[i]->set_core_param();
+  }
+
+  if (!XML->sys.Private_L2){
+    for (i = 0;i < numL2; i++){
+      // l2array[i]->set_cache_param();
+    }
+  }
+
+	for (i = 0;i < numL3; i++){
+	  // l3array[i]->set_cache_param();
+	}
+
+	for (i = 0;i < numL1Dir; i++){
+	  // l1dirarray[i]->set_cache_param();
+	}
+
+	for (i = 0;i < numL2Dir; i++){
+	  // l2dirarray[i]->set_cache_param();
+	}
+
+  if (XML->sys.mc.number_mcs >0 && XML->sys.mc.memory_channels_per_mc>0){
+	  // mc->set_mc_param();
+  }
+
+  if (XML->sys.flashc.number_mcs >0 ){ 
+	  // flashcontroller->set_fc_param();
+  }
+
+  if (XML->sys.niu.number_units >0){
+	  // niu->set_niu_param();
+  }
+
+  if (XML->sys.pcie.number_units >0 && XML->sys.pcie.num_channels >0){
+	  // pcie->set_pcie_param();
+  }
+
+	for (i = 0;i < numNOC; i++){
+	  // nocs[i]->set_noc_param();
+    // if (nocs[i]->nocdynp.has_global_link && XML->sys.NoC[i].type){
+		  // nocs[i]->init_link_bus(sqrt(area.get_area()*XML->sys.NoC[i].chip_coverage));//compute global links
+	  // }
+	}
+}
+
 
 Processor::~Processor(){
 	while (!cores.empty())
