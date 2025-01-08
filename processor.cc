@@ -91,6 +91,7 @@ Processor::Processor(ParseXML *XML_interface)
   else
 	  numL2Dir = procdynp.numL2Dir;
 
+  initialize();
   return;
 }
 
@@ -254,10 +255,14 @@ void Processor::initialize(){
   }
 }
 
-void Processor::compute(){
+void Processor::compute(ParseXML *fresh_XML){
+  // if a new XML is received, reset all stats for a new round of power computation
+  if(fresh_XML != nullptr){
+    refresh_param(fresh_XML);
+    clear_power();
+  }
   int i;
   double pppm_t[4]    = {1,1,1,1};
-
   for (i = 0;i < numCore; i++)
   {
 		  cores[i]->computeEnergy();
@@ -882,9 +887,11 @@ void Processor::refresh_param(ParseXML *fresh_XML){
     cores[i]->exu->XML = fresh_XML;
     cores[i]->rnu->XML = fresh_XML;
     cores[i]->undiffCore->XML = fresh_XML;
-    // cores[i]->l2cache->XML = fresh_XML;
     cores[i]->set_core_param();
-    // cores[i]->l2cache->set_cache_param();
+    if (XML->sys.Private_L2) {
+  	  cores[i]->l2cache->XML = fresh_XML;
+      cores[i]->l2cache->set_cache_param();
+    } 
   }
   // return;
 
@@ -993,4 +1000,179 @@ Processor::~Processor(){
 		delete flashcontroller;
 		flashcontroller = 0;
 	}
-};
+};  
+
+void Processor::clear_power(){
+  int i;
+  power.reset();
+  rt_power.reset();
+  core.power.reset();
+  core.rt_power.reset();
+  for (i = 0;i < numCore; i++){
+      // reset power for core
+		  cores[i]->power.reset();
+		  cores[i]->rt_power.reset();
+      // reset power for components in core
+      cores[i]->ifu->power.reset();
+      cores[i]->ifu->rt_power.reset();
+      // cores[i]->ifu->icache.power.reset();
+      // cores[i]->ifu->icache.rt_power.reset();
+      // cores[i]->ifu->icache.power_t.reset();
+      // cores[i]->ifu->IB->power.reset();
+      // cores[i]->ifu->IB->rt_power.reset();
+      // cores[i]->ifu->IB->power_t.reset();
+      // cores[i]->ifu->ID_inst->power.reset();
+      // cores[i]->ifu->ID_inst->rt_power.reset();
+      // cores[i]->ifu->ID_inst->power_t.reset();
+	    // cores[i]->ifu->ID_operand->power.reset();
+	    // cores[i]->ifu->ID_operand->rt_power.reset();
+	    // cores[i]->ifu->ID_operand->power_t.reset();
+      // cores[i]->ifu->ID_misc->power.reset();
+      // cores[i]->ifu->ID_misc->rt_power.reset();
+      // cores[i]->ifu->ID_misc->power_t.reset();
+      delete cores[i]->ifu->ID_inst;
+      delete cores[i]->ifu->ID_operand;
+      delete cores[i]->ifu->ID_misc;
+      cores[i]->ifu->ID_inst = new inst_decoder(true, &interface_ip,
+    		  cores[i]->ifu->coredynp.opcode_length, 1/*Decoder should not know how many by itself*/,
+    		  cores[i]->ifu->coredynp.x86,
+    		  Core_device, cores[i]->ifu->coredynp.core_ty);
+      cores[i]->ifu->ID_operand = new inst_decoder(true, &interface_ip,
+    		  cores[i]->ifu->coredynp.arch_ireg_width, 1,
+    		  cores[i]->ifu->coredynp.x86,
+    		  Core_device, cores[i]->ifu->coredynp.core_ty);
+      cores[i]->ifu->ID_misc = new inst_decoder(true, &interface_ip,
+    		  8/* Prefix field etc upto 14B*/, 1,
+    		  cores[i]->ifu->coredynp.x86,
+    		  Core_device, cores[i]->ifu->coredynp.core_ty);
+      if (cores[i]->coredynp.predictionW>0) {
+		    cores[i]->ifu->BTB->power_t.reset();
+        cores[i]->ifu->BTB->power.reset();
+        cores[i]->ifu->BTB->rt_power.reset();
+        cores[i]->ifu->BPT->power.reset();
+        cores[i]->ifu->BPT->rt_power.reset();
+		    cores[i]->ifu->BPT->globalBPT->power_t.reset();
+		    cores[i]->ifu->BPT->globalBPT->power.reset();
+		    cores[i]->ifu->BPT->globalBPT->rt_power.reset();
+		    cores[i]->ifu->BPT->L1_localBPT->power_t.reset();
+		    cores[i]->ifu->BPT->L1_localBPT->power.reset();
+		    cores[i]->ifu->BPT->L1_localBPT->rt_power.reset();
+		    cores[i]->ifu->BPT->L2_localBPT->power_t.reset();
+		    cores[i]->ifu->BPT->L2_localBPT->power.reset();
+		    cores[i]->ifu->BPT->L2_localBPT->rt_power.reset();
+		    cores[i]->ifu->BPT->chooser->power_t.reset();
+		    cores[i]->ifu->BPT->chooser->power.reset();
+		    cores[i]->ifu->BPT->chooser->rt_power.reset();
+		    cores[i]->ifu->BPT->RAS->power_t.reset();
+		    cores[i]->ifu->BPT->RAS->power.reset();
+		    cores[i]->ifu->BPT->RAS->rt_power.reset();
+	    }
+      cores[i]->lsu->power.reset();
+      cores[i]->lsu->rt_power.reset();
+      cores[i]->mmu->power.reset();
+      cores[i]->mmu->rt_power.reset();
+      cores[i]->exu->power.reset();
+      cores[i]->exu->rt_power.reset();
+      if (cores[i]->exu->exist){
+        cores[i]->exu->rfu->power.reset();
+        cores[i]->exu->rfu->rt_power.reset();
+	      cores[i]->exu->scheu->power.reset();
+	      cores[i]->exu->scheu->rt_power.reset();
+	      cores[i]->exu->exeu->power.reset();
+	      cores[i]->exu->exeu->rt_power.reset();
+        if (cores[i]->exu->coredynp.num_fpus > 0) {
+		      cores[i]->exu->fp_u->power.reset();
+		      cores[i]->exu->fp_u->rt_power.reset();
+		      cores[i]->exu->fp_u->power_t.reset();
+        }
+	      if (cores[i]->exu->coredynp.num_muls > 0) {
+		      cores[i]->exu->mul->power.reset();
+		      cores[i]->exu->mul->rt_power.reset();
+		      cores[i]->exu->mul->power_t.reset();
+	      }
+        cores[i]->exu->bypass.power.reset();
+        cores[i]->exu->bypass.rt_power.reset();
+      }
+      if (cores[i]->rnu->exist){
+        cores[i]->rnu->power.reset();
+        cores[i]->rnu->rt_power.reset();
+      }
+      if (XML->sys.Private_L2){
+			  cores[i]->l2cache->power.reset();
+			  cores[i]->l2cache->rt_power.reset();
+		  }
+  }
+
+  if (!XML->sys.Private_L2){
+    if (numL2 >0){
+      l2.power.reset();
+      l2.rt_power.reset();
+      for (i = 0;i < numL2; i++){
+        l2array[i]->power.reset();
+        l2array[i]->rt_power.reset();
+      }
+	  }
+  }
+
+  if (numL3 >0){
+    l3.power.reset();
+    l3.rt_power.reset();
+    for (i = 0;i < numL3; i++){
+		  l3array[i]->power.reset();
+		  l3array[i]->rt_power.reset();
+	  }
+  }
+	  
+  if (numL1Dir >0){
+    l1dir.power.reset();
+    l1dir.rt_power.reset();
+    for (i = 0;i < numL1Dir; i++){
+		  l1dirarray[i]->power.reset();
+		  l1dirarray[i]->rt_power.reset();
+	  }
+  }
+	  
+  if (numL2Dir >0){
+    l2dir.power.reset();
+    l2dir.rt_power.reset();
+    for (i = 0;i < numL2Dir; i++){
+		  l2dirarray[i]->power.reset();
+		  l2dirarray[i]->rt_power.reset();
+	  }
+  }
+
+  if (XML->sys.mc.number_mcs >0 && XML->sys.mc.memory_channels_per_mc>0){
+	  mc->power.reset();
+	  mc->rt_power.reset();
+	  mcs.power.reset();
+	  mcs.rt_power.reset();
+  }
+
+  if (XML->sys.flashc.number_mcs >0 ){
+	  flashcontroller->power.reset();
+	  flashcontroller->rt_power.reset();
+	  flashcontrollers.power.reset();
+	  flashcontrollers.rt_power.reset();
+  }
+
+  if (XML->sys.niu.number_units >0){
+	  niu->power.reset();
+	  niu->rt_power.reset();
+	  nius.power.reset();
+	  nius.rt_power.reset();
+  }
+
+  if (XML->sys.pcie.number_units >0 && XML->sys.pcie.num_channels >0){
+	  pcie->power.reset();
+	  pcie->rt_power.reset();
+	  pcies.power.reset();
+	  pcies.rt_power.reset();
+  }
+
+	for (i = 0;i < numNOC; i++){
+	  nocs[i]->power.reset();
+	  nocs[i]->rt_power.reset();
+		noc.power.reset();
+		noc.rt_power.reset();
+	}
+}

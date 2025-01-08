@@ -74,8 +74,9 @@ class Processor : public Component
     void displayDeviceType(int device_type_, uint32_t indent = 0);
     void displayInterconnectType(int interconnect_type_, uint32_t indent = 0);
     void initialize();    // Initialize phase. An optimization is done via design space exploration.
-    void compute();       // Compute phase. Runtime power is computed.
+    void compute(ParseXML *fresh_XML = nullptr);       // Compute phase. Runtime power is computed.
     void refresh_param(ParseXML *fresh_XML); // Refresh statistics for power computation. For coding simplicity, all parameters are refreshed.
+    void clear_power();   // clear power in previous rounds
 };
 
 #endif /* PROCESSOR_H_ */

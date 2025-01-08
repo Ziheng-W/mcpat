@@ -45,6 +45,7 @@ int main(int argc,char *argv[])
 {
 	char * fb ;
 	bool infile_specified     = false;
+  bool trace_simulation     = false;
 	int  plevel               = 2;
 	opt_for_clk	=true;
 	//cout.precision(10);
@@ -55,50 +56,62 @@ int main(int argc,char *argv[])
 
 	for (int32_t i = 0; i < argc; i++)
 	{
-		if (argv[i] == string("-infile"))
-		{
+		if (argv[i] == string("-infile")){
 			infile_specified = true;
 			i++;
-			fb = argv[ i];
+			fb = argv[i];
 		}
-
-		if (argv[i] == string("-print_level"))
-		{
+		if (argv[i] == string("-print_level")){
 			i++;
 			plevel = atoi(argv[i]);
 		}
-
-		if (argv[i] == string("-opt_for_clk"))
-		{
+		if (argv[i] == string("-opt_for_clk")){
 			i++;
 			opt_for_clk = (bool)atoi(argv[i]);
 		}
-	}
-	if (infile_specified == false)
-	{
-		print_usage(argv[0]);
+    if (argv[i] == string("-trace")){
+      trace_simulation = true;
+    }
 	}
 
+	if (infile_specified == false){
+		print_usage(argv[0]);
+	}
 
 	cout<<"McPAT (version "<< VER_MAJOR <<"."<< VER_MINOR
 		<< " of " << VER_UPDATE << ") is computing the target processor...\n "<<endl;
 
-	//parse XML-based interface
+	// parse XML-based interface
 	ParseXML *p1= new ParseXML();
 	p1->parse(fb);
 	Processor proc(p1);
-  proc.initialize();
-  proc.refresh_param(p1);
-  proc.compute();
+  proc.compute(p1);
 	proc.displayEnergy(2, plevel);
+  if (trace_simulation) {
+    while(1){
+      cin>>fb;
+      // cout<<fb<<endl;
+      if (!strcmp(fb,"exit"))
+        break;
+      else if (!strcmp(fb,"repeat")){
+        proc.compute(p1);
+        proc.displayEnergy(2, plevel);
+      }
+      else{
+        p1->parse(fb);
+        proc.compute(p1);
+        proc.displayEnergy(2, plevel);
+      }
+    }
+  }
+  cout<<"Simulation ends."<<endl;
 	delete p1;
 	return 0;
 }
 
-void print_usage(char * argv0)
-{
+void print_usage(char * argv0){
     cerr << "How to use McPAT:" << endl;
     cerr << "  mcpat -infile <input file name>  -print_level < level of details 0~5 >  -opt_for_clk < 0 (optimize for ED^2P only)/1 (optimzed for target clock rate)>"<< endl;
-    //cerr << "    Note:default print level is at processor level, please increase it to see the details" << endl;
+    cerr << "Also, use '-trace' to enable trace-based continuous simulation"<<endl;
     exit(1);
 }
