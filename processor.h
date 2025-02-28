@@ -45,6 +45,9 @@
 #include "sharedcache.h"
 #include "noc.h"
 #include "iocontrollers.h"
+#include "custom_block.h"
+#include <fstream> 
+
 
 class Processor : public Component
 {
@@ -60,6 +63,7 @@ class Processor : public Component
     NIUController    * niu;
     PCIeController   * pcie;
     FlashController  * flashcontroller;
+    CustomBlock CIM_SRAM{"CIM_SRAM",1,1};
     InputParameter interface_ip;
     ProcParam procdynp;
     //wire	globalInterconnect;
@@ -76,7 +80,12 @@ class Processor : public Component
     void initialize();    // Initialize phase. An optimization is done via design space exploration.
     void compute(ParseXML *fresh_XML = nullptr);       // Compute phase. Runtime power is computed.
     void refresh_param(ParseXML *fresh_XML); // Refresh statistics for power computation. For coding simplicity, all parameters are refreshed.
+    void dump_name(ostream &out);
+    void dump_area(ostream &out);
+    void dump_stats(int plevel, ostream &out);
     void clear_power();   // clear power in previous rounds
 };
+
+
 
 #endif /* PROCESSOR_H_ */

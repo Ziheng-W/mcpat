@@ -46,7 +46,7 @@ int main(int argc,char *argv[])
 	char * fb ;
 	bool infile_specified     = false;
   bool trace_simulation     = false;
-	int  plevel               = 2;
+	int  plevel               = 5;
 	opt_for_clk	=true;
 	//cout.precision(10);
 	if (argc <= 1 || argv[1] == string("-h") || argv[1] == string("--help"))
@@ -78,15 +78,19 @@ int main(int argc,char *argv[])
 		print_usage(argv[0]);
 	}
 
-	cout<<"McPAT (version "<< VER_MAJOR <<"."<< VER_MINOR
-		<< " of " << VER_UPDATE << ") is computing the target processor...\n "<<endl;
-
 	// parse XML-based interface
 	ParseXML *p1= new ParseXML();
 	p1->parse(fb);
 	Processor proc(p1);
   proc.compute(p1);
-	proc.displayEnergy(2, plevel);
+  // proc.displayEnergy(2, plevel);
+  ofstream out_area("out.area"); 
+  proc.dump_name(out_area);
+  proc.dump_area(out_area);
+  ofstream out_power("out.ptrace"); 
+  proc.dump_name(out_power);
+  proc.dump_stats(5, out_power);
+  proc.dump_area(cout);
   if (trace_simulation) {
     while(1){
       cin>>fb;
@@ -95,16 +99,17 @@ int main(int argc,char *argv[])
         break;
       else if (!strcmp(fb,"repeat")){
         proc.compute(p1);
-        proc.displayEnergy(2, plevel);
+        // proc.displayEnergy(2, plevel);
+        proc.dump_stats(5, out_power);
       }
       else{
         p1->parse(fb);
         proc.compute(p1);
-        proc.displayEnergy(2, plevel);
+        // proc.displayEnergy(2, plevel);
+        proc.dump_stats(5, out_power);
       }
     }
   }
-  cout<<"Simulation ends."<<endl;
 	delete p1;
 	return 0;
 }
